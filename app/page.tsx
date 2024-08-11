@@ -11,19 +11,24 @@ import { IconSpinner } from "@/components/ui/icons";
 
 export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
   const [loadingMessageIndex, setLoadingMessageIndex] = useState<number | null>(null);
 
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   };
 
   const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);
 
   const [message, setMessage] = useState('');
 
-  useEffect(scrollToBottom, [messages]);
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
 
   // SEND FUNCTION
@@ -82,7 +87,8 @@ export default function Home() {
     <>
       {/* Main chat */}
       <div className='min-h-screen flex flex-col items-center pt-14 pb-3'>
-        <div className='w-full max-w-screen-xs sm:max-w-screen-sm md:max-w-screen-md lg:max-w-screen-lg xl:max-w-screen-xl 2xl:max-w-screen-xl mg-white p-2 rounded-lg max-h-[650px] md:max-h-[700px] lg:max-h-[750px] overflow-y-auto hide-scrollbar'>
+        <div ref={messagesContainerRef}
+          className='w-full max-w-screen-xs sm:max-w-screen-sm md:max-w-screen-md lg:max-w-screen-lg xl:max-w-screen-xl 2xl:max-w-screen-xl mg-white p-2 rounded-lg max-h-[650px] md:max-h-[700px] lg:max-h-[750px] overflow-y-auto hide-scrollbar'>
 
           {messages.length === 0 ?
             <EmptyScreen

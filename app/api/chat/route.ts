@@ -60,31 +60,42 @@ async function createAndUpsertEmbeddings() {
     await index.upsert(vectorDocs);
 }
 
-// Interactive chat
-let chatSession: ChatSession | null = null;
-
 // Init vector database
+// Note: this only gets run once to create the vectors in pinecone based on your rag data (in this case, a txt file)
+// Run this function whenever you delete a namespace in pinecone or 
+// want to load in new rag data (ie. txt file)
+
 // await createAndUpsertEmbeddings()
 
 
-// POST
+
+// Init interactive chat
+let chatSession: ChatSession | null = null;
+
 export async function POST(req: Request) {
     try {
 
-        // Get query from request
         const { message } = await req.json();
 
-        // Create query embedding and search Pinecone
+        // Embedding model processes user's message into a query vector which will be used by Pinecone to search for top 3 matches
         const queryEmbedding = await embeddings.embedQuery(message);
+        //console.log('queryEmbedding: ', queryEmbedding);
+
+
         let queryResponse = await index.query({
             vector: queryEmbedding,
             topK: 3,
             includeMetadata: true,
         })
+        //console.log('queryResponse: ', queryResponse);
 
+        // Concantenates the 3 best matches to create the context for AI to reference
         const concatenatedText = queryResponse.matches
             .map((match) => match.metadata?.text)
             .join(" ");
+
+        const contextAndMessage = `Context: ${concatenatedText}\n\nHuman: ${message}`;
+        //console.log('contextAndMessage: ', contextAndMessage);
 
         // If no chat session exists, create one
         if (!chatSession) {
@@ -96,13 +107,9 @@ export async function POST(req: Request) {
             });
         }
 
-        // Prepare the context and user message
-        const contextAndMessage = `Context: ${concatenatedText}\n\nHuman: ${message}`;
-
-        // Send message to chat session and get a stream
+        // Send message to chat session and return back a streamable response
         const result = await chatSession.sendMessageStream(contextAndMessage);
 
-        // Create a readable stream for the response
         const stream = new ReadableStream({
             async start(controller) {
                 const encoder = new TextEncoder();
@@ -110,7 +117,7 @@ export async function POST(req: Request) {
                     for await (const chunk of result.stream) {
                         const text = chunk.text();
                         if (text) {
-                            process.stdout.write(text);
+                            //process.stdout.write(text);
                             const encodedText = encoder.encode(text);
                             controller.enqueue(encodedText);
                         }
