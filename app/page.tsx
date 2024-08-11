@@ -82,7 +82,7 @@ export default function Home() {
     <>
       {/* Main chat */}
       <div className='min-h-screen flex flex-col items-center pt-14 pb-3'>
-        <div className='w-5/12 max-w-screen-xs sm:max-w-screen-sm md:max-w-screen-md lg:max-w-screen-lg xl:max-w-screen-xl 2xl:max-w-screen-xl mg-white p-2 rounded-lg max-h-[750px] overflow-y-auto hide-scrollbar'>
+        <div className='w-full max-w-screen-xs sm:max-w-screen-sm md:max-w-screen-md lg:max-w-screen-lg xl:max-w-screen-xl 2xl:max-w-screen-xl mg-white p-2 rounded-lg max-h-[650px] md:max-h-[700px] lg:max-h-[750px] overflow-y-auto hide-scrollbar'>
 
           {messages.length === 0 ?
             <EmptyScreen
@@ -124,7 +124,7 @@ export default function Home() {
         </div>
 
         {/* Input bar */}
-        <div className="sticky top-full w-[640px]">
+        <div className="sticky top-full sm:w-[640px]">
           <PromptForm
             input={message}
             setInput={setMessage}
@@ -137,7 +137,7 @@ export default function Home() {
               await sendMessage(value);
             }}
           />
-          <span className="mt-2 block text-sm text-gray-500 sm:text-center dark:text-gray-400">© 2023. All Rights Reserved.</span>
+          <span className="mt-2 block text-sm text-gray-500 text-center dark:text-gray-400">© 2023. All Rights Reserved.</span>
 
         </div>
       </div>

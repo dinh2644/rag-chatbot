@@ -57,7 +57,7 @@ export function PromptForm({
                     await onSubmit(value)
                 }}
             >
-                <div className="relative flex max-h-60 w-full grow flex-col overflow-hidden bg-zinc-100 px-12 sm:rounded-full sm:px-12">
+                <div className="relative flex flex-col max-h-60 w-full grow overflow-hidden bg-zinc-100 px-12 sm:rounded-full sm:px-12">
                     <Button
                         variant="outline"
                         size="icon"
