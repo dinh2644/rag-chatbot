@@ -1,9 +1,5 @@
 import * as React from 'react'
-import { Button } from '@/components/ui/button'
-import { PromptForm } from '@/components/PromptForm'
-import { IconShare } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
-import { toast } from 'sonner'
 import { IconUser } from '@/components/ui/icons'
 import Image from "next/image";
 import IconGemini from "../public/gemini.png"
@@ -21,7 +17,6 @@ export function ChatPanel({
     setMessage,
     onSubmit,
 }: ChatPanelProps) {
-    const [shareDialogOpen, setShareDialogOpen] = React.useState(false)
 
     const exampleMessages = [
         {
@@ -32,7 +27,7 @@ export function ChatPanel({
         {
             heading: 'Can you summarise...',
             subheading: 'what you meant in book five?',
-            message: 'Can you summarise what you wrote in book five?'
+            message: 'Can you summarise what you wrote in your fifth series of your personal writing?'
         }
     ]
 

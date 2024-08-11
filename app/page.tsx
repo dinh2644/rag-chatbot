@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, createElement } from "react";
 import { PromptForm } from "@/components/PromptForm";
 import { IconUser } from '@/components/ui/icons'
 import Image from "next/image";
@@ -7,6 +7,26 @@ import { cn } from '@/lib/utils'
 import { EmptyScreen } from "../components/EmptyPage"
 import MarcusFace from "../public/marcus-face.png"
 import { IconSpinner } from "@/components/ui/icons";
+
+
+const FormattedText = ({ text }: any) => {
+  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/);
+
+  return (
+    <>
+      {parts.map((part: any, index: number) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={index}>{part.slice(2, -2)}</strong>;
+        } else if (part.startsWith('*') && part.endsWith('*')) {
+          return <em key={index}>{part.slice(1, -1)}</em>;
+        } else {
+          return part;
+        }
+      })}
+    </>
+  );
+};
+
 
 
 export default function Home() {
@@ -83,6 +103,8 @@ export default function Home() {
     }
   };
 
+
+
   return (
     <>
       {/* Main chat */}
@@ -120,7 +142,12 @@ export default function Home() {
                   <div
                     className="px-5 self-center"
                   >
-                    {index === loadingMessageIndex ? <IconSpinner /> : message.content}
+
+                    {index === loadingMessageIndex ? (
+                      <IconSpinner />
+                    ) : (
+                      <FormattedText text={message.content} />
+                    )}
                   </div>
 
                 </div>
@@ -151,4 +178,3 @@ export default function Home() {
   );
 
 }
-

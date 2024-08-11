@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, ChatSession } from "@google/generative-ai";
+import { GoogleGenerativeAI, ChatSession } from "@google/generative-ai";
 import { Pinecone } from '@pinecone-database/pinecone';
-import { ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings } from "@langchain/google-genai"
-import { loadQAStuffChain } from "langchain/chains";
-import { Document } from "langchain/document";
+import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai"
+// import { loadQAStuffChain } from "langchain/chains";
+// import { Document } from "langchain/document";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import * as fs from 'fs';
 import * as path from 'path';
-import { ChatPromptTemplate } from "@langchain/core/prompts";
+// import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { systemPrompt } from "@/lib/constant/Prompt";
 
 
