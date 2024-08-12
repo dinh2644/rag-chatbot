@@ -20,14 +20,14 @@ export function ChatPanel({
 
     const exampleMessages = [
         {
-            heading: 'How do you view people...',
-            subheading: 'while being the most powerful man?',
-            message: `How do you view people while being the most powerful man?`
+            heading: 'What do you tell youself...',
+            subheading: 'when you wake up each morning?',
+            message: `What do you tell yourself when you wake up each morning?`
         },
         {
-            heading: 'Can you summarise...',
-            subheading: 'what you meant in book five?',
-            message: 'Can you summarise what you wrote in your fifth series of your personal writing?'
+            heading: 'Interpret the quote...',
+            subheading: "from book 4, verse 42",
+            message: "Interpret the quote from book 4, verse 42 about change."
         }
     ]
 

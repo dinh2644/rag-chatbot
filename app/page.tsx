@@ -30,7 +30,6 @@ const FormattedText = ({ text }: any) => {
 
 
 export default function Home() {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const [loadingMessageIndex, setLoadingMessageIndex] = useState<number | null>(null);

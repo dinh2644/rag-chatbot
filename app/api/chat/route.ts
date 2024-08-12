@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI, ChatSession } from "@google/generative-ai";
+import { GoogleGenerativeAI, ChatSession, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { Pinecone } from '@pinecone-database/pinecone';
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai"
 // import { loadQAStuffChain } from "langchain/chains";
@@ -9,6 +9,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 // import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { systemPrompt } from "@/lib/constant/Prompt";
+
+interface PineconeFilter {
+    book?: number;
+    verse?: number;
+}
 
 
 // Init Gemini API
@@ -21,6 +26,25 @@ const embeddings = new GoogleGenerativeAIEmbeddings({ apiKey: process.env.GEMINI
 const model = genAI.getGenerativeModel({
     model: "gemini-1.5-flash",
     systemInstruction: systemPrompt,
+    safetySettings: [
+        {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+    ],
+
 });
 
 // Init Pinecone
@@ -34,12 +58,34 @@ async function loadAndSplitTXT() {
     try {
         const txtPath = path.join(process.cwd(), 'app', 'api', 'chat', process.env.TXT_FILE_NAME!);
         const textContent = fs.readFileSync(txtPath, 'utf8');
-        const splitter = new RecursiveCharacterTextSplitter({
-            chunkSize: 1000,
-            chunkOverlap: 200,
-        });
-        const docs = await splitter.createDocuments([textContent]);
-        return docs;
+
+        // Split the text into books
+        const books = textContent.split(/Book [IVX]+\./);
+
+        let documents = [];
+
+        for (let i = 1; i < books.length; i++) {
+            const bookNumber = i;
+            const bookContent = books[i].trim();
+
+            // Split the book content into verses
+            const verses = bookContent.split(/\d+\./);
+
+            for (let j = 1; j < verses.length; j++) {
+                const verseNumber = j;
+                const verseContent = verses[j].trim();
+
+                documents.push({
+                    pageContent: verseContent,
+                    metadata: {
+                        book: bookNumber,
+                        verse: verseNumber
+                    }
+                });
+            }
+        }
+
+        return documents;
     } catch (error) {
         console.error('Error in loadAndSplitTXT:', error);
         throw error;
@@ -52,21 +98,91 @@ async function createAndUpsertEmbeddings() {
     const vectorDocs = await Promise.all(docs.map(async (doc, i) => {
         const embedding = await embeddings.embedQuery(doc.pageContent);
         return {
-            id: `doc_${i}`,
+            id: `book_${doc.metadata.book}_verse_${doc.metadata.verse}`,
             values: embedding,
-            metadata: { text: doc.pageContent }
+            metadata: {
+                text: doc.pageContent,
+                book: doc.metadata.book,
+                verse: doc.metadata.verse
+            }
         };
     }));
     await index.upsert(vectorDocs);
 }
 
-// Init vector database
-// Note: this only gets run once to create the vectors in pinecone based on your rag data (in this case, a txt file)
-// Run this function whenever you delete a namespace in pinecone or 
-// want to load in new rag data (ie. txt file)
+function parseBookAndVerse(message: string) {
+    const patterns = [
+        /book\s*(\d+)\s*,?\s*verse\s*(\d+)/i,
+        /(\d+)\s*:\s*(\d+)/,
+        /(\d+)\s*-\s*(\d+)/,
+        /book\s*(\d+)/i,
+    ];
+    for (let pattern of patterns) {
+        const match = message.match(pattern);
+        if (match) {
+            return {
+                book: parseInt(match[1]),
+                verse: match[2] ? parseInt(match[2]) : null
+            };
+        }
+    }
+    return { book: null, verse: null };
+}
 
-// await createAndUpsertEmbeddings()
+// Embed user message and use that to query in pinecone
+async function queryPinecone(message: string) {
+    const queryEmbedding = await embeddings.embedQuery(message);
+    const { book: requestedBook, verse: requestedVerse } = parseBookAndVerse(message);
 
+    let filter: PineconeFilter = {};
+    if (requestedBook) {
+        filter.book = requestedBook;
+        if (requestedVerse) {
+            filter.verse = requestedVerse;
+        }
+    }
+
+    let queryResponse = await index.query({
+        vector: queryEmbedding,
+        topK: 10,
+        includeMetadata: true,
+        filter: Object.keys(filter).length > 0 ? filter : undefined
+    });
+
+    // if no exact match, fall back to book-only filter or unfiltered results
+    if (queryResponse.matches.length === 0 && requestedVerse) {
+        queryResponse = await index.query({
+            vector: queryEmbedding,
+            topK: 10,
+            includeMetadata: true,
+            filter: { book: requestedBook }
+        });
+    }
+
+    if (queryResponse.matches.length === 0 && requestedBook) {
+        queryResponse = await index.query({
+            vector: queryEmbedding,
+            topK: 3,
+            includeMetadata: true,
+        });
+    }
+
+    // sort matches by relevance to requested verse if specified
+    if (requestedVerse) {
+        queryResponse.matches.sort((a, b) => {
+            const aVerse = (a.metadata as any).verse;
+            const bVerse = (b.metadata as any).verse;
+            return Math.abs(aVerse - requestedVerse) - Math.abs(bVerse - requestedVerse);
+        });
+    }
+
+    const context = queryResponse.matches.slice(0, 3).map(match => {
+        const metadata = match.metadata as { text: string; book: number; verse: number };
+        return `Book ${metadata.book}, Verse ${metadata.verse}: ${metadata.text}`;
+    }).join('\n\n');
+
+    return context;
+}
 
 
 // Init interactive chat
@@ -75,27 +191,19 @@ let chatSession: ChatSession | null = null;
 export async function POST(req: Request) {
     try {
 
+        // Init vector database
+        // Note: this only gets run once to create the vectors in pinecone based on your rag data (in this case, a txt file)
+        // Run this function whenever you delete a namespace in pinecone or 
+        // want to load in new rag data (ie. txt file)
+
+        //await createAndUpsertEmbeddings()
+
         const { message } = await req.json();
 
-        // Embedding model processes user's message into a query vector which will be used by Pinecone to search for top 3 matches
-        const queryEmbedding = await embeddings.embedQuery(message);
-        //console.log('queryEmbedding: ', queryEmbedding);
+        const context = await queryPinecone(message)
 
-
-        let queryResponse = await index.query({
-            vector: queryEmbedding,
-            topK: 3,
-            includeMetadata: true,
-        })
-        //console.log('queryResponse: ', queryResponse);
-
-        // Concantenates the 3 best matches to create the context for AI to reference
-        const concatenatedText = queryResponse.matches
-            .map((match) => match.metadata?.text)
-            .join(" ");
-
-        const contextAndMessage = `Context: ${concatenatedText}\n\nHuman: ${message}`;
-        //console.log('contextAndMessage: ', contextAndMessage);
+        const contextAndMessage = `Context: ${context}\n\nHuman: ${message}`;
+        console.log('contextAndMessage: ', contextAndMessage);
 
         // If no chat session exists, create one
         if (!chatSession) {
