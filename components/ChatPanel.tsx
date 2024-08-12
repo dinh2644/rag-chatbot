@@ -27,7 +27,7 @@ export function ChatPanel({
         {
             heading: 'Interpret the quote...',
             subheading: "from book 4, verse 42",
-            message: "Interpret the quote from book 4, verse 42 about change."
+            message: "Interpret the quote from book 4, verse 42."
         }
     ]
 
